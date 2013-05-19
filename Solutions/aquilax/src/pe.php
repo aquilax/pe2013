@@ -345,7 +345,8 @@ class Pe {
 
 		$this->generateHareTable();
 
-		while (!$this->checkSolution()) {
+		$failsafe = 100;
+		while (!$this->checkSolution() && $failsafe--) {
 			$this->rearrangeMandates();
 		}
 		$this->populateResults();
@@ -568,26 +569,30 @@ class Pe {
 	 */
 	private function rearrangeMandates() {
 		$min_remainder = PHP_INT_MAX;
-		$min_party_id = 0;
-		$min_mir_id = 0;
+		$min_party_id = -1;
+		$min_mir_id = -1;
 		foreach ($this->parties as $mir_id => $parties) {
 			foreach ($this->parties_with_extra_mandates as $party_id) {
-				$values = $parties[$party_id];
-				$remainder = $values[self::HARE_REMAINDER];
-				if ($remainder > 0  // not used
-						&& $remainder < $min_remainder // min
-						&& $values[self::PRE_MANDATES_EXTRA] > 0 // has mandate
-				) {
-					$min_remainder = $remainder;
-					$min_party_id = $party_id;
-					$min_mir_id = $mir_id;
+				if (isset($parties[$party_id])) {
+					$values = $parties[$party_id];
+					$remainder = $values[self::HARE_REMAINDER];
+					if ($remainder > 0  // not used
+							&& $remainder < $min_remainder // min
+							&& $values[self::PRE_MANDATES_EXTRA] > 0 // has mandate
+					) {
+						$min_remainder = $remainder;
+						$min_party_id = $party_id;
+						$min_mir_id = $mir_id;
+					}
 				}
 			}
 		}
-		$this->parties[$min_mir_id][$min_party_id][self::PRE_MANDATES_EXTRA] -= 1; // decrease extra mandate
-		$this->parties[$min_mir_id][$min_party_id][self::HARE_REMAINDER] = -1; // mark as passed
-		$party_id = $this->getMaxRemainderForMir($min_mir_id);
-		$this->parties[$min_mir_id][$party_id][self::PRE_MANDATES_EXTRA] += 1; // increase extra mandate
+		if ($min_mir_id > -1) {
+			$this->parties[$min_mir_id][$min_party_id][self::PRE_MANDATES_EXTRA] -= 1; // decrease extra mandate
+			$this->parties[$min_mir_id][$min_party_id][self::HARE_REMAINDER] = -1; // mark as passed
+			$party_id = $this->getMaxRemainderForMir($min_mir_id);
+			$this->parties[$min_mir_id][$party_id][self::PRE_MANDATES_EXTRA] += 1; // increase extra mandate
+		}
 	}
 
 	/**
